@@ -1,0 +1,231 @@
+---
+title: "Week 9 Coal Data Consumption"
+author: "Sai Sudheer Dontha"
+date: "2023-11-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Reading the dataset
+```{r}
+coalConsumptionData <- read.csv("C:/Users/sudhi/Downloads/BIS_581/CoalConsumption_R_Project/annual-coal-consumption-by-country-1980-2009-2.csv")
+head(coalConsumptionData, n=8)
+
+```
+
+### Rename the first column to "Region"
+```{r}
+colnames(coalConsumptionData)[1] <- "Region"
+head(coalConsumptionData, n=8)
+```
+### Display summary statistics of the dataset
+```{r}
+summary(coalConsumptionData)
+```
+
+### Loading the required libraries
+### Load the library for pivot_longer and pivot_wider functions.
+```{r}
+library(tidyverse)  
+library(dplyr)
+```
+### Transforming the dataset into a long format using pivot_longer
+```{r}
+coalLongData <- pivot_longer(coalConsumptionData, !Region, names_to = "Year", values_to = "Consumption")
+coalLongData
+```
+
+### Observing mixed data types in the 'Year' column
+### Utilizing transform and gsub to remove "X" from the 'Year' column
+```{r}
+coalLongData <- transform(coalLongData, Year = gsub("X", "", Year))
+head(coalLongData, n=8)
+```
+View(coalLongData)
+
+### Converting 'Year' to a numeric format
+```{r}
+coalLongData$Year <- as.numeric(as.character(coalLongData$Year))
+is.numeric(coalLongData$Year)
+```
+
+
+### Converting 'Consumption' from character to numeric
+### Checking if 'Consumption' is numeric
+```{r}
+is.numeric(coalLongData$Consumption)
+```
+
+### Checking if 'Consumption' is in character format
+```{r}
+is.character(coalLongData$Consumption)
+```
+
+
+### Converting 'Consumption' to numeric
+```{r}
+coalLongData$Consumption <- as.numeric(coalLongData$Consumption)
+is.numeric(coalLongData$Consumption)
+summary(coalLongData)
+#View(coalLongData)
+```
+
+### Reviewing the class types for all columns
+```{r}
+sapply(coalLongData, class)
+summary(coalLongData)
+```
+
+### Removing NA values
+```{r}
+#install.packages("janitor")
+#library(janitor)
+head(coalLongData, n=10)
+```
+
+### Dropping NA
+#```{r}
+#library(tidyr)
+#head(coalLongData,n=10)
+#  drop_na()
+#  head(coalLongData, n=10)
+```
+
+```{r}
+sum(is.na(coalLongData))
+summary(coalLongData)
+```
+
+```{r}
+processedCoalData <- coalLongData
+```
+
+
+### Separating continents, regions, and countries for further analysis
+```{r}
+continentLabels <- c("Africa", "Asia", "Europe", "North America", "Central & South America", "Former U.S.S.R.",
+                     "Middle East", "Central African Republic", "Asia & Oceania", "Antarctica")
+```
+
+### Using filtering to categorize
+```{r}
+continentData <- filter(processedCoalData, Region %in% continentLabels)
+head(continentData, n=10)
+
+```
+
+
+View(continentData)
+
+```{r}
+otherRegionData <- processedCoalData %>%
+  filter(!(Region %in% continentLabels))
+head(otherRegionData, n=10)
+```
+
+```{r}
+countrySpecificData <- otherRegionData[!(otherRegionData$Region %in% "World"),]
+head(countrySpecificData, n=10)
+```
+
+
+
+### 
+```{r}
+library(ggplot2)
+
+ggplot(continentData, aes(x = as.numeric(Year), y = Consumption, color = Region)) +
+  geom_line(size = 1.2, alpha = 0.8, linetype = "solid") +  
+  labs(
+    title = "Coal Consumption Over Years by Region",
+    x = "Year",
+    y = "Consumption"
+  ) +
+  theme_minimal()
+```
+
+### Faceted histograms by region
+```{r}
+ggplot(continentData, aes(x = Consumption)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~Region) +
+  labs(
+    title = "Distribution of Coal Consumption by Region",
+    x = "Consumption",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+
+
+### Stacked bar chart of total consumption by year
+```{r}
+totalConsumptionByYear <- aggregate(Consumption ~ Year + Region, data = continentData, FUN = sum)
+
+ggplot(totalConsumptionByYear, aes(x = as.factor(Year), y = Consumption, fill = Region)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Total Coal Consumption by Year",
+    x = "Year",
+    y = "Total Consumption"
+  ) +
+  theme_minimal()
+```
+
+
+### Violin Plot
+```{r}
+ggplot(continentData, aes(x = as.numeric(Year), y = Consumption, fill = as.factor(Year))) +
+  geom_violin(trim = FALSE) +
+  labs(
+    title = "Violin Plot of Coal Consumption by Year",
+    x = "Year",
+    y = "Consumption"
+  ) +
+  theme_minimal()
+```
+
+
+### Scatter plot
+```{r}
+ggplot(continentData, aes(x = as.numeric(Year), y = Consumption, color = Region)) +
+  geom_point() +
+  labs(
+    title = "Scatter Plot of Coal Consumption Over Years",
+    x = "Year",
+    y = "Consumption"
+  ) +
+  theme_minimal()
+```
+
+
+### Aggregate total consumption by region
+```{r}
+library(ggplot2)
+library(dplyr)
+
+totalConsumptionByRegion <- continentData %>%
+  group_by(Region) %>%
+  summarise(TotalConsumption = sum(Consumption)) %>%
+  arrange(desc(TotalConsumption))
+
+### Create bar chart
+ggplot(totalConsumptionByRegion, aes(x = reorder(Region, -TotalConsumption), y = TotalConsumption)) +
+  geom_bar(stat = "identity", fill = "violet") +
+  labs(
+    title = "Total Consumption by Region",
+    x = "Region",
+    y = "Total Consumption"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+ 
